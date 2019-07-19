@@ -14,6 +14,9 @@ class Mapping(collections.Mapping):
     def map(self, map_fn):
         return MappedMapping(self, map_fn)
 
+    def item_map(self, map_fn):
+        return ItemMappedMapping(self, map_fn)
+
     @staticmethod
     def zipped(*args, **kwargs):
         if len(args) == 0:
@@ -36,6 +39,10 @@ class Mapping(collections.Mapping):
         else:
             raise TypeError(
                 'base must be a Mapping or iterable, got %s' % base)
+
+    @staticmethod
+    def item_mapped(base, map_fn):
+        return ItemMappedMapping(base, map_fn)
 
 
 class DelegatingMapping(Mapping):
@@ -199,10 +206,16 @@ class MappedMapping(DelegatingMapping):
     def __getitem__(self, key):
         return self._map_fn(super(MappedMapping, self).__getitem__(key))
 
-    def map(self, map_fn):
-        def total_map_fn(x):
-            return map_fn(self._map_fn(x))
-        return MappedMapping(self._base, total_map_fn)
+
+class ItemMappedMapping(DelegatingMapping):
+    """Lazily mapped Mapping with function that takes (key, value) -> value."""
+    def __init__(self, base, map_fn):
+        super(ItemMappedMapping, self).__init__(base)
+        self._map_fn = map_fn
+
+    def __getitem__(self, key):
+        return self._map_fn(
+            key, super(ItemMappedMapping, self).__getitem__(key))
 
 
 class LazyMapping(Mapping):
